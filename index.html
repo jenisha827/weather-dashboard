@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkyGauge — Weather Testing &amp; Monitoring Dashboard</title>
+  <meta name="description" content="A weather testing and monitoring dashboard with live conditions, forecasts, trend charts, and an automated weather safety test." />
+
+  <!-- Google Fonts: Space Grotesk (display), Inter (body), JetBrains Mono (data readouts) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-theme="dark">
+
+  <!-- ===================== NAVBAR ===================== -->
+  <header class="navbar">
+    <div class="navbar__inner">
+      <a href="#top" class="brand" aria-label="SkyGauge home">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="4.2"></circle>
+            <path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"></path>
+          </svg>
+        </span>
+        <span class="brand__text">SkyGauge</span>
+      </a>
+
+      <nav class="navbar__nav" aria-label="Primary">
+        <a href="#current">Current</a>
+        <a href="#forecast">Forecast</a>
+        <a href="#trends">Trends</a>
+        <a href="#testing">Weather Test</a>
+      </nav>
+
+      <div class="navbar__actions">
+        <button id="themeToggle" class="icon-btn" type="button" aria-label="Toggle dark and light mode" aria-pressed="false">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2"></circle>
+            <path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"></path>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5Z"></path>
+          </svg>
+        </button>
+        <button id="mobileNavToggle" class="icon-btn nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <nav class="navbar__mobile" id="mobileNav" aria-label="Mobile" hidden>
+      <a href="#current">Current</a>
+      <a href="#forecast">Forecast</a>
+      <a href="#trends">Trends</a>
+      <a href="#testing">Weather Test</a>
+    </nav>
+  </header>
+
+  <main id="top">
+
+    <!-- ===================== HERO / SEARCH ===================== -->
+    <section class="hero">
+      <div class="hero__inner">
+        <p class="eyebrow">Live conditions · Forecast · Automated safety test</p>
+        <h1 class="hero__title">Read the sky like an instrument panel.</h1>
+        <p class="hero__subtitle">Search any city for current conditions, a 5-day outlook, temperature &amp; humidity trends, and a weather safety score.</p>
+
+        <form id="searchForm" class="search-bar" role="search" aria-label="City weather search">
+          <svg class="search-bar__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M21 21l-4.3-4.3"></path>
+          </svg>
+          <input
+            type="text"
+            id="cityInput"
+            class="search-bar__input"
+            placeholder="Search a city — e.g. Kathmandu, Tokyo, Berlin"
+            autocomplete="off"
+            aria-label="City name"
+            required
+          />
+          <button type="submit" class="btn btn--primary search-bar__submit">Check weather</button>
+        </form>
+
+        <div id="recentCities" class="recent-cities" aria-label="Recently searched cities"></div>
+
+        <details class="api-key-box">
+          <summary>OpenWeatherMap API key</summary>
+          <div class="api-key-box__body">
+            <label for="apiKeyInput">Paste your free API key to enable live data</label>
+            <div class="api-key-box__row">
+              <input type="password" id="apiKeyInput" placeholder="Your OpenWeatherMap API key" autocomplete="off" />
+              <button id="saveApiKeyBtn" type="button" class="btn btn--ghost">Save</button>
+            </div>
+            <p class="api-key-box__hint">Stored only in your browser's localStorage. See the README for how to get a free key.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ===================== STATUS: loading / error ===================== -->
+    <div id="loadingSpinner" class="status-panel" hidden>
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Fetching live weather data…</p>
+    </div>
+
+    <div id="errorPanel" class="status-panel status-panel--error" hidden role="alert">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 8v5M12 16h.01"></path>
+      </svg>
+      <p id="errorMessage">Something went wrong.</p>
+    </div>
+
+    <!-- ===================== CURRENT WEATHER ===================== -->
+    <section id="current" class="section" aria-live="polite">
+      <div id="currentWeather" class="current-weather" hidden>
+
+        <div class="current-weather__main glass-panel">
+          <div class="current-weather__location">
+            <h2 id="cityName">—</h2>
+            <p id="cityDate">—</p>
+          </div>
+
+          <div class="current-weather__readout">
+            <img id="weatherIcon" class="current-weather__icon" src="" alt="" width="90" height="90" />
+            <div class="current-weather__temp-block">
+              <span id="currentTemp" class="current-weather__temp">--°</span>
+              <span id="weatherCondition" class="current-weather__condition">—</span>
+            </div>
+          </div>
+
+          <p id="feelsLike" class="current-weather__feelslike">Feels like --°</p>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card glass-panel">
+            <span class="stat-card__label">Humidity</span>
+            <span id="humidity" class="stat-card__value">--%</span>
+          </div>
+          <div class="stat-card glass-panel">
+            <span class="stat-card__label">Wind speed</span>
+            <span id="windSpeed" class="stat-card__value">-- m/s</span>
+          </div>
+          <div class="stat-card glass-panel">
+            <span class="stat-card__label">Pressure</span>
+            <span id="pressure" class="stat-card__value">-- hPa</span>
+          </div>
+          <div class="stat-card glass-panel">
+            <span class="stat-card__label">Visibility</span>
+            <span id="visibility" class="stat-card__value">-- km</span>
+          </div>
+          <div class="stat-card glass-panel">
+            <span class="stat-card__label">Sunrise</span>
+            <span id="sunrise" class="stat-card__value">--:--</span>
+          </div>
+          <div class="stat-card glass-panel">
+            <span class="stat-card__label">Sunset</span>
+            <span id="sunset" class="stat-card__value">--:--</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="emptyState" class="empty-state glass-panel">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <path d="M6.5 18a4.5 4.5 0 0 1-.5-8.98 5.5 5.5 0 0 1 10.6-2.1A4.5 4.5 0 0 1 17.5 18h-11Z"></path>
+        </svg>
+        <p>Search for a city above to load live conditions, a 5-day forecast, and the weather safety test.</p>
+      </div>
+    </section>
+
+    <!-- ===================== 5-DAY FORECAST ===================== -->
+    <section id="forecast" class="section" hidden>
+      <h2 class="section__title">5-day forecast</h2>
+      <div id="forecastCards" class="forecast-grid"></div>
+    </section>
+
+    <!-- ===================== TREND CHARTS ===================== -->
+    <section id="trends" class="section" hidden>
+      <h2 class="section__title">Trends</h2>
+      <div class="chart-grid">
+        <div class="chart-card glass-panel">
+          <h3>Temperature trend</h3>
+          <canvas id="temperatureChart" role="img" aria-label="Temperature trend chart"></canvas>
+        </div>
+        <div class="chart-card glass-panel">
+          <h3>Humidity trend</h3>
+          <canvas id="humidityChart" role="img" aria-label="Humidity trend chart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== WEATHER TESTING PANEL ===================== -->
+    <section id="testing" class="section" hidden>
+      <h2 class="section__title">Weather safety test</h2>
+      <p class="section__subtitle">An automated read on how today's conditions stack up, city by city.</p>
+
+      <div class="test-panel glass-panel">
+        <div class="test-panel__result">
+          <span class="test-panel__result-label">Overall result</span>
+          <span id="overallResult" class="badge badge--lg">—</span>
+        </div>
+
+        <div class="test-grid">
+          <div class="test-item">
+            <div class="test-item__head">
+              <span>Heat risk</span>
+              <span id="heatRiskBadge" class="badge">—</span>
+            </div>
+            <p id="heatRiskDetail" class="test-item__detail">—</p>
+          </div>
+
+          <div class="test-item">
+            <div class="test-item__head">
+              <span>Cold risk</span>
+              <span id="coldRiskBadge" class="badge">—</span>
+            </div>
+            <p id="coldRiskDetail" class="test-item__detail">—</p>
+          </div>
+
+          <div class="test-item">
+            <div class="test-item__head">
+              <span>Rain probability</span>
+              <span id="rainRiskBadge" class="badge">—</span>
+            </div>
+            <p id="rainRiskDetail" class="test-item__detail">—</p>
+          </div>
+
+          <div class="test-item">
+            <div class="test-item__head">
+              <span>Wind safety</span>
+              <span id="windRiskBadge" class="badge">—</span>
+            </div>
+            <p id="windRiskDetail" class="test-item__detail">—</p>
+          </div>
+
+          <div class="test-item test-item--score">
+            <div class="test-item__head">
+              <span>Air comfort score</span>
+              <span id="comfortScoreValue" class="test-item__score-value">--/100</span>
+            </div>
+            <div class="score-bar">
+              <div id="comfortScoreBar" class="score-bar__fill"></div>
+            </div>
+            <p id="comfortScoreDetail" class="test-item__detail">—</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <span class="brand__text">SkyGauge</span>
+        <p>A weather testing &amp; monitoring dashboard built with vanilla JS and the OpenWeatherMap API.</p>
+      </div>
+      <div class="footer__meta">
+        <p>Data via <a href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeatherMap</a></p>
+        <p>Charts via <a href="https://www.chartjs.org/" target="_blank" rel="noopener noreferrer">Chart.js</a></p>
+        <p id="footerYear"></p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
