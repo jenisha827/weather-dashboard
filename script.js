@@ -13,6 +13,10 @@ const CONFIG = {
   ICON_URL: 'https://openweathermap.org/img/wn',
   UNITS: 'metric',
   MAX_RECENT_CITIES: 6,
+  // Fallback key so the app works out of the box for any visitor (e.g. a
+  // teacher grading this project) without them needing to supply their own.
+  // A visitor-supplied key (saved via the API key box) always takes priority.
+  DEFAULT_API_KEY: 'd19ee7173d05ab680b8ec29224e5d060',
   STORAGE_KEYS: {
     API_KEY: 'skygauge_api_key',
     THEME: 'skygauge_theme',
@@ -153,7 +157,7 @@ function toggleMobileNav() {
    API key management
    ========================================================================== */
 function getApiKey() {
-  return Storage.get(CONFIG.STORAGE_KEYS.API_KEY) || '';
+  return Storage.get(CONFIG.STORAGE_KEYS.API_KEY) || CONFIG.DEFAULT_API_KEY || '';
 }
 
 function saveApiKey() {
@@ -562,7 +566,7 @@ async function handleSearch(cityOverride) {
 
   const apiKey = getApiKey();
   if (!apiKey) {
-    showError('Add your OpenWeatherMap API key below to fetch live weather data.');
+    showError('Add an OpenWeatherMap API key below to fetch live weather data.');
     return;
   }
 
